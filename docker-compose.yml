@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: qdrant_db
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    networks:
+      - rag-network
+
+  neo4j:
+    image: neo4j:5.12.0
+    container_name: neo4j_db
+    ports:
+      - "7474:7474" # HTTP
+      - "7687:7687" # Bolt
+    environment:
+      - NEO4J_AUTH=neo4j/Agents@1234
+      - NEO4J_PLUGINS=["apoc"] # Optional: useful for GraphRAG logic
+    volumes:
+      - ./neo4j_data:/data
+    networks:
+      - rag-network
+
+  backend:
+    build: ./backend
+    container_name: backend_api
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    environment:
+      # These override .env for internal docker networking
+      - QDRANT_URL=http://qdrant:6333
+      - NEO4J_URI=bolt://neo4j:7687
+      - NEO4J_PASSWORD=Agents@1234
+    depends_on:
+      - qdrant
+      - neo4j
+    networks:
+      - rag-network
+
+  frontend:
+    build: ./frontend
+    container_name: frontend_ui
+    ports:
+      - "3000:80" # Nginx serves on 80 inside the container
+    depends_on:
+      - backend
+    networks:
+      - rag-network
+
+networks:
+  rag-network:
+    driver: bridge
