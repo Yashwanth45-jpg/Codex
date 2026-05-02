@@ -1,4 +1,5 @@
 .env
+node_moules/
 neo4j_data/
 qdrant_storage/
 *.log
